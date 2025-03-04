@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Jumping Cube</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #222;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            flex-direction: column;
+            touch-action: manipulation;
+        }
+        canvas {
+            background: #444;
+            max-width: 100%;
+            height: auto;
+        }
+        #restartButton {
+            display: none;
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 18px;
+            background: #f00;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        #scoreDisplay {
+            color: white;
+            font-size: 20px;
+            margin-bottom: 10px;
+        }
+        #winMessage {
+            color: white;
+            font-size: 24px;
+            margin-bottom: 10px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="winMessage">Score 2000 to Win!</div>
+    <div id="scoreDisplay">Score: 0</div>
+    <canvas id="gameCanvas"></canvas>
+    <button id="restartButton" onclick="restartGame()">Restart</button>
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        const restartButton = document.getElementById("restartButton");
+        const scoreDisplay = document.getElementById("scoreDisplay");
+        const winMessage = document.getElementById("winMessage");
+        
+        function resizeCanvas() {
+            canvas.width = window.innerWidth * 0.9;
+            canvas.height = window.innerHeight * 0.5;
+        }
+        window.addEventListener("resize", resizeCanvas);
+        resizeCanvas();
+
+        let cube, gravity, obstacles, speed, score, maxScore, gameRunning, jumpCount, animationFrame;
+
+        function initGame() {
+            let groundLevel = canvas.height - 50;
+            cube = { x: 50, y: groundLevel - 30, width: 30, height: 30, velocityY: 0, jumping: false };
+            gravity = 0.5;
+            obstacles = [];
+            speed = 4;
+            score = 0;
+            maxScore = 2000;
+            gameRunning = true;
+            jumpCount = 0;
+            restartButton.style.display = "none";
+            winMessage.style.display = "block";
+            scoreDisplay.textContent = "Score: 0";
+            gameLoop();
+        }
+
+        function drawCube() {
+            ctx.fillStyle = "#00f";
+            ctx.fillRect(cube.x, cube.y, cube.width, cube.height);
+        }
+
+        function drawObstacles() {
+            ctx.fillStyle = "#f00";
+            obstacles.forEach(ob => ctx.fillRect(ob.x, ob.y, ob.width, ob.height));
+        }
+
+        function updateObstacles() {
+            if (Math.random() < 0.02) {
+                let groundLevel = canvas.height - 50;
+                let height = Math.random() * 30 + 20;
+                obstacles.push({ x: canvas.width, y: groundLevel - height, width: 30, height: height });
+            }
+            obstacles.forEach(ob => ob.x -= speed);
+            obstacles = obstacles.filter(ob => ob.x + ob.width > 0);
+        }
+
+        function updateCube() {
+            if (cube.jumping) {
+                cube.velocityY += gravity;
+                cube.y += cube.velocityY;
+                let groundLevel = canvas.height - 50;
+                if (cube.y >= groundLevel - cube.height) {
+                    cube.y = groundLevel - cube.height;
+                    cube.jumping = false;
+                    jumpCount = 0;
+                    cube.velocityY = 0;
+                }
+            }
+        }
+
+        function checkCollision() {
+            for (let ob of obstacles) {
+                if (
+                    cube.x < ob.x + ob.width &&
+                    cube.x + cube.width > ob.x &&
+                    cube.y < ob.y + ob.height &&
+                    cube.y + cube.height > ob.y
+                ) {
+                    gameRunning = false;
+                    restartButton.style.display = "block";
+                    cancelAnimationFrame(animationFrame);
+                    return;
+                }
+            }
+        }
+
+        function jump() {
+            if (jumpCount < 3) {
+                cube.jumping = true;
+                cube.velocityY = -12 - jumpCount * 2;
+                jumpCount++;
+            }
+        }
+
+        window.addEventListener("keydown", (e) => {
+            if (e.code === "Space" && gameRunning) {
+                jump();
+            }
+        });
+
+        window.addEventListener("touchstart", (e) => {
+            if (gameRunning) {
+                e.preventDefault();
+                jump();
+            }
+        }, { passive: false });
+
+        function gameLoop() {
+            if (!gameRunning) return;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawCube();
+            drawObstacles();
+            updateObstacles();
+            updateCube();
+            checkCollision();
+            score++;
+            scoreDisplay.textContent = "Score: " + score;
+            speed += 0.0005;
+            if (score >= maxScore) {
+                winMessage.textContent = "You Won the Game!";
+                gameRunning = false;
+                restartButton.style.display = "block";
+                cancelAnimationFrame(animationFrame);
+                return;
+            }
+            animationFrame = requestAnimationFrame(gameLoop);
+        }
+
+        function restartGame() {
+            cancelAnimationFrame(animationFrame);
+            initGame();
+        }
+
+        initGame();
+    </script>
+</body>
+</html>
